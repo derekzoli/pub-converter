@@ -1,0 +1,13 @@
+# Solo i file elencati: documenti, prove e file locali restano fuori
+*
+!.gitignore
+!README.md
+!LICENSE
+!requirements.txt
+!pub2sla.py
+!pub2idml.py
+!Convertitore PUB.pyw
+!crea_eseguibile.ps1
+!font_base.json
+!icona.ico
+!Icona.png
