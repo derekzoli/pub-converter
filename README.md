@@ -31,7 +31,7 @@ You do not need Python to use the executable.
 
 ### Download and use
 
-1. Download `Convertitore PUB.exe` from the [Releases](https://github.com/derekzoli/pub-converter/releases) page.
+1. Download `Convertitore-PUB.exe` from the [Releases](https://github.com/derekzoli/pub-converter/releases) page.
 2. Open it, choose the format and the files, then click **Convert**.
 
 The executable has no digital signature, so Windows or your antivirus may flag it the first time.
@@ -89,7 +89,7 @@ Per usare l'eseguibile Python non serve.
 
 ### Scaricare e usare
 
-1. Scarica `Convertitore PUB.exe` dalla pagina [Releases](https://github.com/derekzoli/pub-converter/releases).
+1. Scarica `Convertitore-PUB.exe` dalla pagina [Releases](https://github.com/derekzoli/pub-converter/releases).
 2. Aprilo, scegli il formato e i file, poi clicca **Converti**.
 
 L'eseguibile non ha una firma digitale: la prima volta Windows o l'antivirus possono segnalarlo.
