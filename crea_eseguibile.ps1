@@ -8,7 +8,7 @@ $copia = Join-Path $lavoro "src"  # si compila da una copia: i percorsi locali n
 
 Remove-Item $lavoro -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $copia | Out-Null
-foreach ($file in "pub2sla.py", "pub2idml.py", "Convertitore PUB.pyw", "font_base.json", "icona.ico") {
+foreach ($file in "pub2sla.py", "pub2idml.py", "raccogli_font.py", "Convertitore PUB.pyw", "font_base.json", "icona.ico") {
     Copy-Item -LiteralPath (Join-Path $sorgenti $file) $copia
 }
 

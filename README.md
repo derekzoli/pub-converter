@@ -25,7 +25,7 @@ The originals are never changed.
 | **Windows** | Required |
 | **Microsoft Publisher** | Required and working: it is what reads the `.pub` files, so the converter cannot work without it |
 | **Scribus** or **DesignCraft** | The one for the format you choose. Tested with Scribus 1.6.7 and DesignCraft 0.14, in the standard program folders |
-| **The fonts used in your documents** | If they are missing, the look changes |
+| **The fonts used in your documents** | If they are missing, the look changes. The program can copy them to a `Document Fonts` folder next to the document: DesignCraft loads them by itself, for Scribus they must be installed. Respect the font licenses if you share that folder |
 
 You do not need Python to use the executable.
 
@@ -83,7 +83,7 @@ Gli originali non vengono mai modificati.
 | **Windows** | Necessario |
 | **Microsoft Publisher** | Necessario e funzionante: è lui che legge i file `.pub`, senza non si può convertire |
 | **Scribus** o **DesignCraft** | Quello del formato scelto. Provati con Scribus 1.6.7 e DesignCraft 0.14, nelle cartelle standard dei programmi |
-| **I font usati nei documenti** | Se mancano, l'aspetto cambia |
+| **I font usati nei documenti** | Se mancano, l'aspetto cambia. Il programma può copiarli nella cartella `Document Fonts` accanto al documento: DesignCraft li carica da solo, per Scribus vanno installati. Rispetta le licenze dei font se condividi quella cartella |
 
 Per usare l'eseguibile Python non serve.
 

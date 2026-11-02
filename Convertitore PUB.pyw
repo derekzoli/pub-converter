@@ -22,11 +22,12 @@ from tkinter import filedialog, messagebox, ttk
 
 ESEGUIBILE = getattr(sys, "frozen", False)
 CARTELLA = Path(sys.executable if ESEGUIBILE else __file__).resolve().parent
-sys.path.insert(0, str(CARTELLA))
+if not ESEGUIBILE:  # l'eseguibile usa solo la sua copia, non i .py accanto
+    sys.path.insert(0, str(CARTELLA))
 import pub2sla  # noqa: E402
 from pub2sla import DESIGNCRAFT, SCRIBUS, pid_publisher  # noqa: E402
 
-VERSIONE = "1.0"
+VERSIONE = "1.1"
 PREFISSO_CREATO = "  creato: "
 ARG_CONVERTI = "--converti"
 if ESEGUIBILE:
@@ -77,6 +78,7 @@ TESTI = {
         "sfoglia": "Sfoglia…",
         "titolo_dest": "Dove salvare i documenti convertiti",
         "verifica": "Confronta il risultato con l'originale (più lento)",
+        "raccogli": "Copia i font usati accanto al documento (cartella Document Fonts)",
         "annulla": "Annulla",
         "converti": "Converti",
         "risultati": "Documenti creati (doppio clic per aprire)",
@@ -153,7 +155,9 @@ TESTI = {
                   "• Microsoft Publisher funzionante: è indispensabile, è lui che legge i file .pub\n"
                   "• Scribus (provato con la 1.6.7) oppure DesignCraft (provato con la 0.14), secondo il formato "
                   "scelto, installati nelle cartelle dei programmi\n"
-                  "• I font usati nei documenti: se mancano, l'aspetto cambia\n"
+                  "• I font usati nei documenti: se mancano, l'aspetto cambia. Il programma può copiarli nella "
+                  "cartella Document Fonts accanto al documento: DesignCraft li carica da solo, per Scribus vanno "
+                  "installati. Rispetta le licenze dei font se condividi quella cartella\n"
                   "Python non serve: l'eseguibile lo contiene già."),
             ("h", "Limiti da conoscere"),
             ("p", "• Tabelle, WordArt e forme complesse diventano immagini, quindi non modificabili\n"
@@ -192,6 +196,7 @@ TESTI = {
         "sfoglia": "Browse…",
         "titolo_dest": "Where to save the converted documents",
         "verifica": "Compare the result with the original (slower)",
+        "raccogli": "Copy the fonts used next to the document (Document Fonts folder)",
         "annulla": "Cancel",
         "converti": "Convert",
         "risultati": "Documents created (double-click to open)",
@@ -266,7 +271,9 @@ TESTI = {
                   "• A working copy of Microsoft Publisher: this is essential, as it is what reads the .pub files\n"
                   "• Scribus (tested with 1.6.7) or DesignCraft (tested with 0.14), depending on the chosen format, "
                   "installed in the program folders\n"
-                  "• The fonts used in your documents: if they are missing, the look changes\n"
+                  "• The fonts used in your documents: if they are missing, the look changes. The program can copy "
+                  "them to a Document Fonts folder next to the document: DesignCraft loads them by itself, for "
+                  "Scribus they must be installed. Respect the font licenses if you share that folder\n"
                   "You do not need Python: the executable already includes it."),
             ("h", "Known limits"),
             ("p", "• Tables, WordArt and complex shapes become images, so they cannot be edited\n"
@@ -294,6 +301,11 @@ MESSAGGI_EN = [
     ("nessun corsivo, usato", "no italic, using"),
     ("nessun grassetto, usato", "no bold, using"),
     ("font non trovato, usato Arial", "font not found, using Arial"),
+    ("font non trovato sul PC, non copiato", "font not found on this PC, not copied"),
+    ("la licenza del font non permette la copia", "the font license does not allow copying"),
+    ("font copiati:", "fonts copied:"),
+    ("file in Document Fonts", "files in Document Fonts"),
+    ("font non copiati:", "fonts not copied:"),
     ("parole al loro posto", "words in place"),
     ("scarto verticale medio", "average vertical offset"),
     ("  diversa p", "  different p"),
@@ -421,6 +433,8 @@ class Ricerca:
         self.tabella.pack(side="left", fill="both", expand=True)
         scorri.pack(side="right", fill="y")
         self.tabella.bind("<Button-1>", self.clic)
+
+        ttk.Checkbutton(win, text=t("raccogli"), variable=app.raccogli_lista).pack(anchor="w", **pad)
 
         azioni = ttk.Frame(win)
         azioni.pack(fill="x", **pad)
@@ -558,10 +572,12 @@ class App:
         self.accanto = tk.BooleanVar(value=True)
         self.destinazione = tk.StringVar()
         self.verifica = tk.BooleanVar(value=False)
+        self.raccogli = tk.BooleanVar(value=True)
+        self.raccogli_lista = tk.BooleanVar(value=False)  # con Cerca e converti aggiunge una cartella per ogni posto
         self.nome_lingua = tk.StringVar()
 
-        root.geometry("720x650")
-        root.minsize(600, 530)
+        root.geometry("720x680")
+        root.minsize(600, 560)
         root.protocol("WM_DELETE_WINDOW", self.chiudi)
         self.costruisci()
         if not publisher_installato():
@@ -629,6 +645,7 @@ class App:
         self.sfoglia = ttk.Button(riga, text=t("sfoglia"), command=self.scegli_destinazione)
         self.sfoglia.pack(side="left")
 
+        ttk.Checkbutton(root, text=t("raccogli"), variable=self.raccogli).pack(anchor="w", padx=10, pady=(4, 0))
         azioni = ttk.Frame(root)
         azioni.pack(fill="x", **pad)
         ttk.Checkbutton(azioni, text=t("verifica"), variable=self.verifica).pack(side="left")
@@ -779,6 +796,8 @@ class App:
             comando += ["--out", self.destinazione.get()]
         if self.verifica.get():
             comando.append("--verifica")
+        if self.raccogli.get():
+            comando.append("--font")
         self.lista = None
         self.prepara()
         self.lancia(comando)
@@ -801,7 +820,8 @@ class App:
         descrittore, self.file_elenco = tempfile.mkstemp(suffix=".txt", prefix="convertitore-pub-")
         with os.fdopen(descrittore, "w", encoding="utf-8") as f:
             f.write("\n".join(self.parte))
-        self.lancia([*AVVIO_CONVERSIONE, "--elenco", self.file_elenco, "--accanto", "--formato", self.formato.get()])
+        font = ["--font"] if self.raccogli_lista.get() else []
+        self.lancia([*AVVIO_CONVERSIONE, "--elenco", self.file_elenco, "--accanto", "--formato", self.formato.get(), *font])
 
     def prepara(self):
         self.creati.clear()

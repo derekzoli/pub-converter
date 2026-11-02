@@ -12,6 +12,7 @@ Uso:
     --out       cartella di destinazione (default: accanto al .pub, "<nome>_<formato>")
     --accanto   salva nella stessa cartella del .pub solo il documento (e le immagini per Scribus)
     --elenco    file di testo UTF-8 con un .pub per riga, in aggiunta ai percorsi
+    --font      copia accanto al documento i font che usa, nella cartella "Document Fonts"
     --verifica  esporta il risultato in PDF e misura le differenze
                 rispetto al PDF esportato da Publisher
 """
@@ -20,6 +21,7 @@ import json
 import math
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -30,9 +32,13 @@ from xml.sax.saxutils import quoteattr
 
 import pymupdf
 import pythoncom
+import win32com
 import win32com.client
+import win32com.gen_py
+from win32com.client import gencache
 
 from pub2idml import motivo_tratto, scrivi_idml
+from raccogli_font import raccogli
 
 
 def trova_programma(standard, *modelli):
@@ -556,9 +562,15 @@ def elenco_font_scribus(dati: Path):
         uscita = Path(d) / "font.json"
         script.write_text(f"import scribus, json\nopen(r'{uscita}', 'w', encoding='utf-8')"
                           f".write(json.dumps(scribus.getFontNames()))\n", encoding="utf-8")
-        subprocess.run([SCRIBUS, "-g", "-ns", "-py", str(script)], timeout=180, check=False)
-        dati.write_text(uscita.read_text(encoding="utf-8"), encoding="utf-8")
-    return json.loads(dati.read_text(encoding="utf-8"))
+        try:
+            subprocess.run([SCRIBUS, "-g", "-ns", "-py", str(script)], timeout=180, check=False)
+            elenco = uscita.read_text(encoding="utf-8")
+        except (OSError, subprocess.TimeoutExpired):  # Scribus non risponde: il documento si converte lo stesso
+            riserva = dati if dati.exists() else Path(__file__).parent / "font_base.json"
+            return json.loads(riserva.read_text(encoding="utf-8"))
+        dati.parent.mkdir(parents=True, exist_ok=True)
+        dati.write_text(elenco, encoding="utf-8")
+    return json.loads(elenco)
 
 
 # ---------------------------------------------------------------- scrittura .sla
@@ -978,6 +990,35 @@ def pid_publisher() -> set:
     return {int(riga.split('","')[1]) for riga in r.stdout.splitlines() if riga.startswith('"MSPUB')}
 
 
+def apri_publisher():
+    """Publisher con le classi generate da pywin32: senza, assegnare doc.Saved fallisce.
+
+    Le classi stanno in una cartella del programma: quella predefinita e' nei file temporanei,
+    che Windows puo' pulire lasciandola a meta'. Se e' danneggiata si ricrea.
+    """
+    cartella = Path(os.environ.get("LOCALAPPDATA", tempfile.gettempdir())) / "Convertitore PUB" / "gen_py"
+    cartella /= f"{sys.version_info.major}.{sys.version_info.minor}"
+    try:
+        return _publisher_con_classi(cartella)
+    except (AttributeError, ImportError, OSError, SyntaxError, EOFError):
+        shutil.rmtree(cartella, ignore_errors=True)
+        for nome in [m for m in sys.modules if m.startswith("win32com.gen_py.")]:
+            del sys.modules[nome]
+        return _publisher_con_classi(cartella)
+
+
+def _publisher_con_classi(cartella: Path):
+    cartella.mkdir(parents=True, exist_ok=True)
+    win32com.__gen_path__ = str(cartella)
+    win32com.gen_py.__path__ = [str(cartella)]
+    gencache.clsidToTypelib.clear()
+    gencache.__init__()  # rilegge l'indice dalla cartella appena scelta
+    app = win32com.client.DispatchEx("Publisher.Application")
+    tipo = app._oleobj_.GetTypeInfo().GetContainingTypeLib()[0].GetLibAttr()
+    gencache.EnsureModule(str(tipo[0]), tipo[1], tipo[3], tipo[4])  # versione di Publisher installata
+    return win32com.client.Dispatch(app)
+
+
 def trova_pub(percorsi):
     for p in map(Path, percorsi):
         if p.is_dir():
@@ -994,6 +1035,7 @@ def main():
     ap.add_argument("--out")
     ap.add_argument("--accanto", action="store_true")
     ap.add_argument("--elenco")
+    ap.add_argument("--font", action="store_true")
     ap.add_argument("--verifica", action="store_true")
     args = ap.parse_args()
     if args.elenco:
@@ -1023,7 +1065,11 @@ def main():
     guardia = avvia_guardia()
     font = Font(elenco_font_scribus(percorso_font()))
     pythoncom.CoInitialize()
-    app = win32com.client.DispatchEx("Publisher.Application")
+    try:
+        app = apri_publisher()
+    except Exception:
+        termina_publisher()
+        raise
     codice = 0
     try:
         for i, pub in enumerate(files, 1):
@@ -1057,6 +1103,12 @@ def main():
                 for a in avvisi + sorted(font.mancanti):
                     print("  avviso:", a)
                 font.mancanti.clear()
+                if args.font:
+                    try:
+                        for messaggio in raccogli(dati, cartella, pub.stem):
+                            print(messaggio, flush=True)
+                    except OSError as e:  # il documento e' gia' salvato: non e' un errore di conversione
+                        print(f"  avviso: font non copiati: {e}", flush=True)
                 if args.verifica:
                     pdf_nuovo = cartella / f"{pub.stem}_{args.formato}.pdf"
                     if args.formato == "designcraft":
@@ -1074,7 +1126,7 @@ def main():
                     app.Name
                 except Exception:  # Publisher si e' chiuso: gli altri file ne hanno bisogno
                     termina_publisher()
-                    app = win32com.client.DispatchEx("Publisher.Application")
+                    app = apri_publisher()
             finally:
                 provvisoria.cleanup()
     finally:
