@@ -54,7 +54,7 @@ python pub2sla.py FILE_OR_FOLDER --formato designcraft
 
 ### How it was made
 
-I came up with and tested the application, and it was written with [Claude Code](https://claude.com/claude-code), Anthropic's coding assistant. Publisher opens the document and provides text, shapes and images through its COM interface. The PDF exported by Publisher gives the exact position of each line. Finally the native formats are written: `.sla` for Scribus, `.idml` and `.designcraft` for DesignCraft.
+I came up with and tested the application, and it was written with [Claude Code](https://claude.com/claude-code), Anthropic's coding assistant. Publisher opens the document and provides text, shapes and images through its COM interface. The PDF exported by Publisher gives the exact position of each line. Finally the native formats are written: `.sla` for Scribus, `.designcraft` for DesignCraft.
 
 ### Author and license
 
@@ -112,7 +112,7 @@ python pub2sla.py FILE_O_CARTELLA --formato designcraft
 
 ### Come è stata fatta
 
-L'applicazione è stata ideata e collaudata da me e scritta con [Claude Code](https://claude.com/claude-code), l'assistente di programmazione di Anthropic. Publisher apre il documento e fornisce testi, forme e immagini attraverso la sua interfaccia COM. Il PDF esportato da Publisher dà le posizioni esatte delle righe. Infine vengono scritti i formati nativi: `.sla` per Scribus, `.idml` e `.designcraft` per DesignCraft.
+L'applicazione è stata ideata e collaudata da me e scritta con [Claude Code](https://claude.com/claude-code), l'assistente di programmazione di Anthropic. Publisher apre il documento e fornisce testi, forme e immagini attraverso la sua interfaccia COM. Il PDF esportato da Publisher dà le posizioni esatte delle righe. Infine vengono scritti i formati nativi: `.sla` per Scribus, `.designcraft` per DesignCraft.
 
 ### Autore e licenza
 

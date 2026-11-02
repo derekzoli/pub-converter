@@ -1036,6 +1036,7 @@ def main():
     ap.add_argument("--accanto", action="store_true")
     ap.add_argument("--elenco")
     ap.add_argument("--font", action="store_true")
+    ap.add_argument("--pdf", action="store_true", help="tiene il PDF esportato da Publisher accanto al risultato")
     ap.add_argument("--verifica", action="store_true")
     args = ap.parse_args()
     if args.elenco:
@@ -1080,17 +1081,16 @@ def main():
             else:
                 cartella = Path(args.out) if args.out else pub.parent / f"{pub.stem}_{args.formato}"
             t0 = time.time()
-            # accanto all'originale resta solo il documento: il resto si prepara fuori
+            # PDF e IDML servono solo a lavorare: si preparano fuori dalla cartella del documento
             provvisoria = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
             lavoro = Path(provvisoria.name)
-            copie = lavoro if args.accanto else cartella
-            pdf_orig = copie / f"{pub.stem}_publisher.pdf"  # riferimento esatto, resta come copia
+            pdf_orig = lavoro / f"{pub.stem}_publisher.pdf"  # riferimento esatto
             try:
                 cartella.mkdir(parents=True, exist_ok=True)
                 if args.formato == "designcraft":
                     # immagini incorporate nell'IDML: si preparano fuori da OneDrive, che blocca le cartelle
                     dati, avvisi = leggi_pub(app, pub, lavoro, pdf_orig)
-                    idml = copie / f"{pub.stem}.idml"
+                    idml = lavoro / f"{pub.stem}.idml"
                     scrivi_idml(dati, font, lavoro, idml, Scrittore(dati, font))
                     risultato = cartella / f"{pub.stem}.designcraft"
                     designcraft(idml, risultato)
@@ -1100,6 +1100,8 @@ def main():
                     risultato.write_text(Scrittore(dati, font).documento(), encoding="utf-8")
                 print(f"[{i}/{len(files)}] OK  {pub.name} -> {risultato.name} ({time.time() - t0:.1f}s)", flush=True)
                 print(f"  creato: {risultato.resolve()}", flush=True)
+                if args.pdf:
+                    shutil.copy(pdf_orig, cartella / pdf_orig.name)
                 for a in avvisi + sorted(font.mancanti):
                     print("  avviso:", a)
                 font.mancanti.clear()
@@ -1110,7 +1112,7 @@ def main():
                     except OSError as e:  # il documento e' gia' salvato: non e' un errore di conversione
                         print(f"  avviso: font non copiati: {e}", flush=True)
                 if args.verifica:
-                    pdf_nuovo = cartella / f"{pub.stem}_{args.formato}.pdf"
+                    pdf_nuovo = (cartella if args.pdf else lavoro) / f"{pub.stem}_{args.formato}.pdf"
                     if args.formato == "designcraft":
                         designcraft(risultato, pdf_nuovo)
                     else:

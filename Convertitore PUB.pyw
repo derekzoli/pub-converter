@@ -27,7 +27,7 @@ if not ESEGUIBILE:  # l'eseguibile usa solo la sua copia, non i .py accanto
 import pub2sla  # noqa: E402
 from pub2sla import DESIGNCRAFT, SCRIBUS, pid_publisher  # noqa: E402
 
-VERSIONE = "1.1"
+VERSIONE = "1.2"
 PREFISSO_CREATO = "  creato: "
 ARG_CONVERTI = "--converti"
 if ESEGUIBILE:
@@ -57,7 +57,7 @@ TESTI = {
         "lingua": "Lingua",
         "info": "Info",
         "formato": "Formato",
-        "dc": "DesignCraft (.designcraft + .idml)",
+        "dc": "DesignCraft (.designcraft)",
         "sc": "Scribus (.sla)",
         "cosa": "Cosa convertire",
         "scegli_file": "Scegli file .pub…",
@@ -79,6 +79,7 @@ TESTI = {
         "titolo_dest": "Dove salvare i documenti convertiti",
         "verifica": "Confronta il risultato con l'originale (più lento)",
         "raccogli": "Copia i font usati accanto al documento (cartella Document Fonts)",
+        "tieni_pdf": "Tieni una copia PDF del documento originale",
         "annulla": "Annulla",
         "converti": "Converti",
         "risultati": "Documenti creati (doppio clic per aprire)",
@@ -149,7 +150,7 @@ TESTI = {
             ("p", "L'applicazione è stata ideata e collaudata da me e scritta con Claude Code, l'assistente di "
                   "programmazione di Anthropic. È scritta in Python: Publisher apre il documento e fornisce testi, "
                   "forme e immagini; il PDF esportato da Publisher dà le posizioni esatte delle righe; infine "
-                  "vengono scritti i formati nativi .sla per Scribus e .idml e .designcraft per DesignCraft."),
+                  "vengono scritti i formati nativi: .sla per Scribus e .designcraft per DesignCraft."),
             ("h", "Cosa serve installato"),
             ("p", "• Windows\n"
                   "• Microsoft Publisher funzionante: è indispensabile, è lui che legge i file .pub\n"
@@ -175,7 +176,7 @@ TESTI = {
         "lingua": "Language",
         "info": "About",
         "formato": "Format",
-        "dc": "DesignCraft (.designcraft + .idml)",
+        "dc": "DesignCraft (.designcraft)",
         "sc": "Scribus (.sla)",
         "cosa": "What to convert",
         "scegli_file": "Choose .pub files…",
@@ -197,6 +198,7 @@ TESTI = {
         "titolo_dest": "Where to save the converted documents",
         "verifica": "Compare the result with the original (slower)",
         "raccogli": "Copy the fonts used next to the document (Document Fonts folder)",
+        "tieni_pdf": "Keep a PDF copy of the original document",
         "annulla": "Cancel",
         "converti": "Convert",
         "risultati": "Documents created (double-click to open)",
@@ -265,7 +267,7 @@ TESTI = {
             ("p", "I came up with and tested the application, and it was written with Claude Code, Anthropic's "
                   "coding assistant. It is written in Python: Publisher opens the document and provides text, shapes "
                   "and images; the PDF exported by Publisher gives the exact position of each line; finally the "
-                  "native formats are written: .sla for Scribus, .idml and .designcraft for DesignCraft."),
+                  "native formats are written: .sla for Scribus, .designcraft for DesignCraft."),
             ("h", "What you need installed"),
             ("p", "• Windows\n"
                   "• A working copy of Microsoft Publisher: this is essential, as it is what reads the .pub files\n"
@@ -435,6 +437,7 @@ class Ricerca:
         self.tabella.bind("<Button-1>", self.clic)
 
         ttk.Checkbutton(win, text=t("raccogli"), variable=app.raccogli_lista).pack(anchor="w", **pad)
+        ttk.Checkbutton(win, text=t("tieni_pdf"), variable=app.tieni_pdf).pack(anchor="w", padx=10)
 
         azioni = ttk.Frame(win)
         azioni.pack(fill="x", **pad)
@@ -574,6 +577,7 @@ class App:
         self.verifica = tk.BooleanVar(value=False)
         self.raccogli = tk.BooleanVar(value=True)
         self.raccogli_lista = tk.BooleanVar(value=False)  # con Cerca e converti aggiunge una cartella per ogni posto
+        self.tieni_pdf = tk.BooleanVar(value=False)
         self.nome_lingua = tk.StringVar()
 
         root.geometry("720x680")
@@ -646,6 +650,7 @@ class App:
         self.sfoglia.pack(side="left")
 
         ttk.Checkbutton(root, text=t("raccogli"), variable=self.raccogli).pack(anchor="w", padx=10, pady=(4, 0))
+        ttk.Checkbutton(root, text=t("tieni_pdf"), variable=self.tieni_pdf).pack(anchor="w", padx=10, pady=(4, 0))
         azioni = ttk.Frame(root)
         azioni.pack(fill="x", **pad)
         ttk.Checkbutton(azioni, text=t("verifica"), variable=self.verifica).pack(side="left")
@@ -798,6 +803,8 @@ class App:
             comando.append("--verifica")
         if self.raccogli.get():
             comando.append("--font")
+        if self.tieni_pdf.get():
+            comando.append("--pdf")
         self.lista = None
         self.prepara()
         self.lancia(comando)
@@ -821,7 +828,8 @@ class App:
         with os.fdopen(descrittore, "w", encoding="utf-8") as f:
             f.write("\n".join(self.parte))
         font = ["--font"] if self.raccogli_lista.get() else []
-        self.lancia([*AVVIO_CONVERSIONE, "--elenco", self.file_elenco, "--accanto", "--formato", self.formato.get(), *font])
+        pdf = ["--pdf"] if self.tieni_pdf.get() else []
+        self.lancia([*AVVIO_CONVERSIONE, "--elenco", self.file_elenco, "--accanto", "--formato", self.formato.get(), *font, *pdf])
 
     def prepara(self):
         self.creati.clear()
